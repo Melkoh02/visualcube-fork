@@ -51,4 +51,4 @@ RewriteRule ^visualcube\.(gif|png|jpg|jpeg|tiff|ico)$ http://www.example.com/vis
 * Arrow overlays
 * Text labels overlay (via `lab=` or `arwmode=labels`)
 * Highly configurable URL-based API
-* Open Source1
+* Open Source
