@@ -291,6 +291,24 @@
 					</td>
 					<td>grey</td><td>Arrows will be this colour by default, unless overridden by a
 					colour specified for each arrow in the arw variable.</td></tr>
+
+				<tr>
+				<td><em>lab</em></td>
+				<td>Sticker labels</td>
+				<td>Examples:
+					<code>lab=U3U0U2-yellow</code> (auto “1,2,3”),
+					<code>lab=U3:1U0:2U2:3-ff0</code> (explicit labels, hex colour)
+				</td>
+				<td>–</td>
+				<td>Places text in order on the given facelets. Colour optional; defaults to arrow colour.</td>
+				</tr>
+				<tr>
+				<td><em>arwmode</em></td>
+				<td>Arrow rendering mode</td>
+				<td><code>labels</code></td>
+				<td>–</td>
+				<td>If set to <code>labels</code>, the <code>arw=</code> parameter renders labels (1..n) instead of arrows.</td>
+				</tr>
 			</table>
 			<br/><br/><?php if($ENABLE_COOKIES){ ?>
 			<h2>Cookie Configuration</h2>

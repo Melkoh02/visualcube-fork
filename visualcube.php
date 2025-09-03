@@ -477,6 +477,25 @@
 			}
 		}
 
+		// Retrieve label defn's (either lab=... or arw=...&arwmode=labels)
+		$labels = null;
+		$label_param = null;
+		if (array_key_exists('lab', $_REQUEST)) {
+			$label_param = $_REQUEST['lab'];
+		} else if (array_key_exists('arw', $_REQUEST) && array_key_exists('arwmode', $_REQUEST)
+				&& strtolower($_REQUEST['arwmode']) === 'labels') {
+			// reuse the arw token list but render as labels instead of arrows
+			$label_param = $_REQUEST['arw'];
+		}
+		if ($label_param) {
+			$lstr = preg_split('/,/', $label_param);
+			$i = 0;
+			foreach ($lstr as $l) {
+				$l_ = parse_labels($l, $dim);
+				if ($l_) $labels[$i++] = $l_;
+			}
+		}
+
 		// Retrieve default arrow colour
 		$ac = $GREY;
 		if(array_key_exists('ac', $_REQUEST)){
@@ -603,6 +622,22 @@
 			$cube .= "\t</g>\n";
 		}
 
+		// Draw Labels (numbers on stickers)
+		if (isset($labels)) {
+			// default color fallback (reuse arrow default)
+			$awidth = 0.12 / $dim;
+			$cube .= "\t<g style='opacity:1;stroke-linecap:round;font-family:Arial, Helvetica, sans-serif'>\n";
+			foreach ($labels as $li => $L) {
+				$positions = $L[0];                 // list of [face,x,y]
+				$texts     = $L[1];                 // list of strings (usually "1","2",...)
+				$col       = array_key_exists(2,$L) && $L[2] ? $L[2] : $ac; // default to arrow colour
+				foreach ($positions as $k => $s) {
+					$cube .= gen_label($s, $texts[$k], $col);
+				}
+			}
+			$cube .= "\t</g>\n";
+		}
+
 		// Draw Arrows
 		if(isset($arrows)){
 			$awidth = 0.12 / $dim;
@@ -696,6 +731,79 @@
 			}
 		}
 		return $arrow;
+	}
+
+	// Parse label definition: "U3U0U2-yellow" (auto numbers 1..n)
+	// or explicit labels: "U3:1U0:2U2:3-yellow"
+	function parse_labels($str, $dim){
+		$parts  = preg_split('/-/', $str);
+		$fcodes = array('U'=>0,'R'=>1,'F'=>2,'D'=>3,'L'=>4,'B'=>5);
+		if (count($parts) == 0) return null;
+
+		// capture optional ":label" after the facelet index
+		if (!preg_match_all('/([URFDLB])([0-9]+)(?::([^URFDLB-]+))?/', $parts[0], $m) || count($m) < 3)
+			return null;
+
+		$positions = array();
+		$texts     = array();
+
+		// map facelet tokens to (face,x,y)
+		for ($i=0; $i<count($m[1]); $i++){
+			$f  = $fcodes[$m[1][$i]];
+			$fn = intval($m[2][$i]);
+			$fn = ($fn >= $dim*$dim) ? $dim*$dim - 1 : $fn;
+			$x  = $fn % $dim;
+			$y  = floor($fn / $dim);
+			$positions[] = array($f, $x, $y);
+
+			// take explicit label if provided; we’ll fill later if not
+			$texts[] = (isset($m[3][$i]) && $m[3][$i] !== '') ? $m[3][$i] : null;
+		}
+
+		// allow a trailing colour token (same parser as arrows)
+		$col = null;
+		for ($i=1; $i<count($parts); $i++) {
+			$c = parse_col($parts[$i]);
+			if ($c) { $col = $c; break; }
+		}
+
+		// if no explicit labels, auto-number 1..n
+		$filled = array();
+		$n = count($texts);
+		for ($i=0; $i<$n; $i++){
+			$filled[$i] = ($texts[$i] === null) ? strval($i+1) : $texts[$i];
+		}
+
+		// return [positions, texts, colour]
+		return array($positions, $filled, $col);
+	}
+
+	// Generate a centred text label inside a facelet
+	function gen_label($s, $text, $col){
+		global $p, $dim;
+		if ($col == 't') return '';
+
+		// centre of the unscaled facelet square
+		$cf = array(
+			($p[$s[0]][$s[1]][$s[2]][0] + $p[$s[0]][$s[1]+1][$s[2]+1][0]) / 2,
+			($p[$s[0]][$s[1]][$s[2]][1] + $p[$s[0]][$s[1]+1][$s[2]+1][1]) / 2,
+			0
+		);
+		// match the same “inset” used by facelet_svg (0.85) to keep text inside sticker
+		$p1 = trans_scale($p[$s[0]][$s[1]  ][$s[2]  ], $cf, 0.85);
+		$p3 = trans_scale($p[$s[0]][$s[1]+1][$s[2]+1], $cf, 0.85);
+
+		$w = abs($p3[0] - $p1[0]);
+		$h = abs($p3[1] - $p1[1]);
+		$fs = min($w, $h) * 0.6;            // font-size ~60% of facelet
+		$sw = 0.02 / $dim;                   // outline stroke for legibility
+
+		// outline (stroke only) + fill text stacked for readability on any colour
+		return
+			"\t\t<text x='{$cf[0]}' y='{$cf[1]}' text-anchor='middle' dominant-baseline='middle' ".
+			"font-size='{$fs}' stroke='#000000' stroke-width='{$sw}' fill='none'>{$text}</text>\n".
+			"\t\t<text x='{$cf[0]}' y='{$cf[1]}' text-anchor='middle' dominant-baseline='middle' ".
+			"font-size='{$fs}' fill='#{$col}'>{$text}</text>\n";
 	}
 
 	// Insert space in default fd/fc variables

@@ -49,5 +49,6 @@ RewriteRule ^visualcube\.(gif|png|jpg|jpeg|tiff|ico)$ http://www.example.com/vis
 * Image caching for speedy access
 * Cookie configurable variables
 * Arrow overlays
+* Text labels overlay (via `lab=` or `arwmode=labels`)
 * Highly configurable URL-based API
-* Open Source
+* Open Source1
